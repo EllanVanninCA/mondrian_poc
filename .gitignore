@@ -1,0 +1,16 @@
+.idea/
+.vscode/
+.metals/
+.bloop/
+out/
+.idea_modules/
+
+dist/*
+target/
+project/boot/
+project/plugins/project/
+project/project
+.history
+.cache
+.lib/
+**/metals.sbt
