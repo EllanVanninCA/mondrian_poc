@@ -63,7 +63,7 @@ object Main {
 
     val mdx =
       """SELECT
-        | { [Measures].[Sales] } ON COLUMNS,
+        | { [Measures].[Sales], [Measures].[Quantity], [Measures].[Average Price Per Item] } ON COLUMNS,
         | { [Product].Children } ON ROWS,
         | { [Time].Children } ON 2
         |FROM [SteelWheelsSales]""".stripMargin
@@ -90,7 +90,7 @@ object Main {
         case (cell, rowMembers, colMembers, yearMembers) =>
           (rowMembers.headOption, colMembers.headOption, yearMembers.headOption) match {
             case (Some(row), Some(col), Some(year)) =>
-              s"Value for row '${row.getUniqueName}' and column '${col.getUniqueName}' on '${year.getUniqueName}' is '${cell.getFormattedValue}'"
+              s"Value for '${col.getUniqueName}' for '${row.getUniqueName}' on '${year.getUniqueName}' is '${cell.getFormattedValue}'"
             case (row, col, year) =>
               s"Undefined value in '${row.map(_.getUniqueName)}''${col.map(_.getUniqueName)}''${year
                 .map(_.getUniqueName)}' (Value: '${cell.getFormattedValue}')"
