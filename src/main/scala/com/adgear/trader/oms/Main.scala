@@ -59,5 +59,51 @@ object Main {
     println(s"Measures: ${measures.mkString(sep)}")
     println(s"Hierarchies: ${hierarchies.mkString(sep)}")
     println(s"Dimensions: ${dimensions.mkString(sep)}")
+    println()
+
+    val mdx =
+      """SELECT
+        | { [Measures].[Sales] } ON COLUMNS,
+        | { [Product].Children } ON ROWS,
+        | { [Time].Children } ON 2
+        |FROM [SteelWheelsSales]""".stripMargin
+
+    val cellSet = olapConnection.createStatement().executeOlapQuery(mdx)
+
+    val columns = cellSet.getAxes.get(0).asScala
+    val rows    = cellSet.getAxes.get(1).asScala
+    val years   = cellSet.getAxes.get(2).asScala
+
+    val cells = for {
+      row  <- rows
+      col  <- columns
+      year <- years
+    } yield (
+      cellSet.getCell(col, row, year),
+      row.getMembers.asScala.toList,
+      col.getMembers.asScala.toList,
+      year.getMembers.asScala.toList
+    )
+
+    val result = cells
+      .map {
+        case (cell, rowMembers, colMembers, yearMembers) =>
+          (rowMembers.headOption, colMembers.headOption, yearMembers.headOption) match {
+            case (Some(row), Some(col), Some(year)) =>
+              s"Value for row '${row.getUniqueName}' and column '${col.getUniqueName}' on '${year.getUniqueName}' is '${cell.getFormattedValue}'"
+            case (row, col, year) =>
+              s"Undefined value in '${row.map(_.getUniqueName)}''${col.map(_.getUniqueName)}''${year
+                .map(_.getUniqueName)}' (Value: '${cell.getFormattedValue}')"
+          }
+      }
+      .mkString(System.lineSeparator())
+
+    println(s"""${Console.CYAN}Example Query${Console.RESET}:
+        |$mdx
+        |
+        |${Console.CYAN}Result${Console.RESET}:
+        |$result""".stripMargin)
+
+    olapConnection.close()
   }
 }
