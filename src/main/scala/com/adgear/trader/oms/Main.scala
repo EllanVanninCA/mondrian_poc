@@ -1,6 +1,7 @@
 package com.adgear.trader.oms
 
 import java.sql.DriverManager
+import java.util.Formatter
 
 import org.olap4j.OlapConnection
 import org.olap4j.metadata.{Dimension, Hierarchy, Level}
@@ -41,25 +42,25 @@ object Main {
       "JdbcDrivers=org.h2.Driver;" +
       "JdbcUser=username;" +
       "JdbcPassword=password;" +
-      "Catalog=/Users/candre/olap/schema.mondrian.xml"
+      "Catalog=/Users/c.andre/olap/schema.mondrian.xml"
 
     val jdbcConnection                 = DriverManager.getConnection(cnxUrl)
     val olapConnection: OlapConnection = jdbcConnection.unwrap(classOf[OlapConnection])
 
     val cubes = olapConnection.getOlapSchema.getCubes
 
-    val cubeNames = cubes.asMap().asScala
-    println(s"Cubes: ${cubeNames.keySet.mkString(sep)}")
-
-    val exampleCube = cubes.get("SteelWheelsSales")
-    val measures    = exampleCube.getMeasures.asScala.toList
-    val hierarchies = exampleCube.getHierarchies.asScala.toList.map(displayHierarchy)
-    val dimensions  = exampleCube.getDimensions.asScala.toList.map(diplayDimension)
-
-    println(s"Measures: ${measures.mkString(sep)}")
-    println(s"Hierarchies: ${hierarchies.mkString(sep)}")
-    println(s"Dimensions: ${dimensions.mkString(sep)}")
-    println()
+    //    val cubeNames = cubes.asMap().asScala
+    //    println(s"Cubes: ${cubeNames.keySet.mkString(sep)}")
+    //
+    //    val exampleCube = cubes.get("SteelWheelsSales")
+    //    val measures    = exampleCube.getMeasures.asScala.toList
+    //    val hierarchies = exampleCube.getHierarchies.asScala.toList.map(displayHierarchy)
+    //    val dimensions  = exampleCube.getDimensions.asScala.toList.map(diplayDimension)
+    //
+    //    println(s"Measures: ${measures.mkString(sep)}")
+    //    println(s"Hierarchies: ${hierarchies.mkString(sep)}")
+    //    println(s"Dimensions: ${dimensions.mkString(sep)}")
+    //    println()
 
     val mdx =
       """SELECT
@@ -85,24 +86,40 @@ object Main {
       year.getMembers.asScala.toList
     )
 
-    val result = cells
-      .map {
-        case (cell, rowMembers, colMembers, yearMembers) =>
-          (rowMembers.headOption, colMembers.headOption, yearMembers.headOption) match {
-            case (Some(row), Some(col), Some(year)) =>
-              s"Value for '${col.getUniqueName}' for '${row.getUniqueName}' on '${year.getUniqueName}' is '${cell.getFormattedValue}'"
-            case (row, col, year) =>
-              s"Undefined value in '${row.map(_.getUniqueName)}''${col.map(_.getUniqueName)}''${year
-                .map(_.getUniqueName)}' (Value: '${cell.getFormattedValue}')"
-          }
-      }
-      .mkString(System.lineSeparator())
+    val leftAlignFormat = " %-40s | %-30s | %-30s | %-30s"
+    val titles = {
+      val lines = new Formatter().format(
+        leftAlignFormat,
+        List.fill(40)("-").mkString,
+        List.fill(30)("-").mkString,
+        List.fill(30)("-").mkString,
+        List.fill(30)("-").mkString
+      )
+
+      lines + System.lineSeparator() + new Formatter()
+        .format(leftAlignFormat, "Measure", "Product", "Time", "Value")
+        .out()
+        .toString + System.lineSeparator() + lines
+    }
+
+    val result = cells.map {
+      case (cell, rowMembers, colMembers, yearMembers) =>
+        val formatter = new Formatter()
+
+        val row       = rowMembers.headOption.map(_.getUniqueName).getOrElse("<null>")
+        val col       = colMembers.headOption.map(_.getUniqueName).getOrElse("<null>")
+        val year      = yearMembers.headOption.map(_.getUniqueName).getOrElse("<null>")
+        val cellValue = cell.getFormattedValue
+
+        formatter.format(leftAlignFormat + "%n", col, row, year, cellValue).out().toString
+    }.mkString
 
     println(s"""${Console.CYAN}Example Query${Console.RESET}:
-        |$mdx
-        |
-        |${Console.CYAN}Result${Console.RESET}:
-        |$result""".stripMargin)
+         |$mdx
+         |
+         |${Console.CYAN}Result${Console.RESET}:
+         |$titles
+         |$result""".stripMargin)
 
     olapConnection.close()
   }
